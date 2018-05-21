@@ -1,0 +1,43 @@
+#!/bin/bash
+if [ $1 ]
+then
+        num=$(ps -C $1|grep $1|wc -l)
+        if [ $num -gt 0 ]
+        then
+                declare -a pids
+                for var in `seq $num`
+                do
+                        pids[$var]=`pidof $1|tr ' ' '\n'|awk 'NR=='+$var`
+                        tempMsg=`ps -p ${pids[$var]} -o stime,time,cmd|grep $1|awk 'NR==1'|sed         's/${pids[$var]}//g;s/\s\{1,\}/:/g'`
+                        if [ ${#tempMsg} -gt 106 ];then
+                                tempMsg=${tempMsg:0,50}~!@@!~${tempMsg:${#tempMsg}-50:50}
+                        fi
+                        pids[$var]="${pids[$var]} ${tempMsg}"
+                done
+                whiptail_cmd=''
+                n=0
+                while [ $n -lt ${#pids[@]} ]
+                do
+                        let 'n++'
+                        whiptail_cmd+=${pids[$n]}
+                        if [ $n == 1 ]
+                        then
+                                whiptail_cmd+=' ON '
+                        else
+                                whiptail_cmd+=' OFF '
+                        fi
+                done
+                desicions=`whiptail --title "Killing" --checklist "Choose the Ps to Kill" 30 100 20 $whiptail_cmd 3>&1 1>&2 2>&3`
+                exitstatus=$?
+                if [ $exitstatus = 0 -a ${#desicions} -gt 0 ]; then
+                        echo Your favorite distros are: $desicions
+                        kill -2 `echo $desicions|sed 's/\"//g'`
+                else
+                    echo "You chose Cancel."
+                fi
+        else
+                echo 没有$1进程
+        fi
+else
+        echo '缺少cmd参数'
+fi
